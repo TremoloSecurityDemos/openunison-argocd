@@ -98,6 +98,7 @@ services:
   node_selectors: []
   
 openunison:
+  orchestra_login_portal_name: openunison
   replicas: 1
   non_secret_data:
     K8S_DB_SSO: oidc
