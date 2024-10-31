@@ -100,11 +100,11 @@ services:
 openunison:
   amq:
     enabled: true
-    ha: true
-    pvc:
-      enabled: true
-      accessmode: ReadWriteOnce
-      storageclass: local-path
+    # ha: true
+    # pvc:
+    #   enabled: true
+    #   accessmode: ReadWriteOnce
+    #   storageclass: local-path
   replicas: 1
   non_secret_data:
     K8S_DB_SSO: oidc
