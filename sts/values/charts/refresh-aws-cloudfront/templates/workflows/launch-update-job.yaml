@@ -1,0 +1,73 @@
+---
+apiVersion: openunison.tremolo.io/v1
+kind: Workflow
+metadata:
+  name: launch-update-job
+  namespace: {{ .Release.Namespace }}
+spec:
+  description: lunch the cloudfront update job
+  inList: false
+  label: do nothing
+  orgId: x
+  tasks: |-
+      - taskType: customTask
+        className: com.tremolosecurity.provisioning.tasks.CreateK8sObject
+        params:
+            targetName: k8s
+            srcType: yaml
+            template: |- 
+                kind: Job
+                apiVersion: batch/v1
+                metadata:
+                    name: launch-update-job-$certname$-$version$
+                    namespace: {{ .Release.Namespace }}
+                    annotations:
+                        tremolo.io/dr-ignore: "true"
+                spec:
+                    parallelism: 1
+                    completions: 1
+                    backoffLimit: 5
+                    selector:
+                    matchLabels:
+                        job-name: launch-update-job-$certname$-$version$
+                    template:
+                      metadata:
+                        name: launch-update-job-$certname$-$version$
+                        namespace: {{ .Release.Namespace }}
+                        annotations:
+                            tremolo.io/{{ .Values.sts.controlplane.name }}: {{ .Values.sts.controlplane.role }}
+                        labels:
+                            job-name: launch-update-job-$certname$-$version$
+                            tremolo.io/{{ .Values.sts.controlplane.name }}: "true"
+                      spec:
+                        restartPolicy: OnFailure
+                        containers:
+                        - name: aws-cli
+                          env:
+                            - name: "AWS_REGION"
+                              value: "us-east-1"
+                            - name: OU_HOST
+                              value: "#[OU_HOST]"
+                            - name: STS
+                              value: "$sts_name$"
+                            - name: STS_S3_BUCKET
+                              value: "$sts_s3_bucket$"
+                            - name: CLOUDFRONT_DISTRO_ID
+                              value: "$sts_cf_distroid$"
+                          image: public.ecr.aws/aws-cli/aws-cli:latest
+                          imagePullPolicy: Always
+                          command:
+                            - /bin/bash  
+                          args:
+                            - /scripts/script.sh
+                          volumeMounts:
+                            - name: scripts
+                              mountPath: /scripts
+                            - name: tmpdir
+                              mountPath: /tmp
+                        volumes:
+                        - name: tmpdir
+                          emptyDir: {}
+                        - name: scripts
+                          configMap:
+                            name: refreshscripts

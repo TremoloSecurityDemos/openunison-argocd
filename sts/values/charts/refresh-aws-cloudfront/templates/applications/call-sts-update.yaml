@@ -1,0 +1,123 @@
+{{- $root := . -}}
+{{ range $sts := .Values.sts.endpoints  }}
+---
+apiVersion: openunison.tremolo.io/v1
+kind: Application
+metadata:
+  name: sts-update-{{ $root.Release.Name }}-{{ $sts.name }}
+  namespace: {{ $root.Release.Namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "40"
+spec:
+  azTimeoutMillis: 3000
+  isApp: true
+  azTimeoutMillis: 3000
+  cookieConfig:
+    cookiesEnabled: false
+    {{ if $sts.host_in_openunison }}
+    domain: "{{ $sts.issuer.host }}"
+    {{ else }}
+    domain: '#[OU_HOST]'
+    {{ end }}
+    httpOnly: true
+    keyAlias: session-unison
+    logoutURI: /logout
+    scope: -1
+    secure: true
+    sessionCookieName: tremolosession
+    timeout: 900
+  urls:
+  - authChain: anon
+    azRules:
+    {{ if not (empty $sts.azRules) }}
+    {{ range $sts.azRules }}
+    - scope: {{ .scope }}
+      constraint: {{ .constraint }}
+    {{ end }}
+    {{ else }}
+    - constraint: o=Tremolo
+      scope: dn
+    {{ end }}
+    filterChain:
+    - className: com.tremolosecurity.proxy.filters.JavaScriptFilter
+      params:
+        javaScript: |-
+          GlobalEntries = Java.type("com.tremolosecurity.server.GlobalEntries");
+          ProxyConstants = Java.type("com.tremolosecurity.proxy.util.ProxyConstants");
+          System = Java.type("java.lang.System");
+          JwtClaims = Java.type("org.jose4j.jwt.JwtClaims");
+          JsonWebSignature = Java.type("org.jose4j.jws.JsonWebSignature");
+          AlgorithmIdentifiers = Java.type("org.jose4j.jws.AlgorithmIdentifiers");
+          IdpMappingType = Java.type("com.tremolosecurity.config.xml.IdpMappingType");
+          ProvisionMappingType = Java.type("com.tremolosecurity.config.xml.ProvisionMappingType");
+          MapIdentity = Java.type("com.tremolosecurity.provisioning.mapping.MapIdentity");
+          HttpServletRequestWrapper = Java.type("jakarta.servlet.http.HttpServletRequestWrapper");
+          OpenIDConnectConfig = Java.type("com.tremolosecurity.idp.providers.oidc.model.OpenIDConnectConfig");
+          GsonBuilder = Java.type("com.google.gson.GsonBuilder");
+          JsonWebKey = Java.type("org.jose4j.jwk.JsonWebKey");
+          JsonWebKeySet = Java.type("org.jose4j.jwk.JsonWebKeySet");
+          StringBuffer = Java.type("java.lang.StringBuffer");
+          MessageDigest = Java.type("java.security.MessageDigest");
+          HexFormat = Java.type("java.util.HexFormat");
+          HashMap = Java.type("java.util.HashMap");
+          Thread = Java.type("java.lang.Thread");
+          JSUtils = Java.type("com.tremolosecurity.util.JSUtils");
+          ProxySys = Java.type("com.tremolosecurity.proxy.ProxySys");
+
+          function initFilter(config) {
+
+          }
+
+
+
+          function doFilter(request,response,chain) {
+            
+            var payload = JSON.parse(JSUtils.bytes2string(request.getAttribute(ProxySys.MSG_BODY)));
+
+            const keypair = "{{ .issuer.keypair }}";
+            const version = payload.version;
+
+            
+
+            const userData = request.getSession().getAttribute(ProxyConstants.AUTH_CTL).getAuthInfo();
+            holder = request.getAttribute(ProxyConstants.AUTOIDM_CFG);
+
+            wfrequest = new HashMap();
+            wfrequest.put("certname",keypair);
+            wfrequest.put("version",version);
+
+            
+            var versionMatches = false;
+            for (var i=0;i<10;i++) {
+                var certVersion = holder.getConfig().getKeyVersion(keypair);
+                if (certVersion != version) {
+                    System.out.println("openunison not yet updated to version " + version + " for " + keypair + ", currently " + certVersion);
+                    Thread.sleep(1000);
+                } else {
+                    versionMatches = true;
+                    break;
+                }
+            }
+
+            if (! versionMatches) {
+                response.getWriter().println(JSON.stringify({"success":false}));    
+                return;
+            }
+
+            try {
+                holder.getConfig().getProvisioningEngine().getWorkFlow("sts-update-{{ .name }}").executeWorkflow(userData, "uid",wfrequest);
+            } catch (e) {
+                e.printStackTrace();
+            }
+
+
+            response.getWriter().println(JSON.stringify({"doesthis":"work"}));
+            
+
+          }
+    hosts:
+    - "{{ $sts.issuer.host }}"
+    - '#[OU_HOST]'
+    results: {}
+    uri: /sts-update{{ $sts.path }}
+{{ end }}

@@ -1,0 +1,39 @@
+---
+apiVersion: openunison.tremolo.io/v1
+kind: Application
+metadata:
+  name: logintest
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "40"
+spec:
+  azTimeoutMillis: 3000
+  isApp: true
+  azTimeoutMillis: 3000
+  cookieConfig:
+    cookiesEnabled: true
+    domain: '#[OU_HOST]'
+    httpOnly: true
+    keyAlias: session-unison
+    logoutURI: /logout
+    scope: -1
+    secure: true
+    sessionCookieName: logintestsessionxx
+    timeout: 900
+  urls:
+  - authChain: app-idp
+    azRules:
+    - constraint: o=Tremolo
+      scope: dn
+    filterChain:
+    - className: com.tremolosecurity.prelude.filters.LoginTest
+      params:
+          # The URI of the JSP that will echo the information
+          jspURI: "/auth/forms/loginTest.jsp"
+          # The path of the logout URI
+          logoutURI: "/logout"
+  
+    hosts:
+    - '#[OU_HOST]'
+    results: {}
+    uri: /logintest

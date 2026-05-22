@@ -1,0 +1,32 @@
+{{- $root := . -}}
+{{ range $sts := .Values.sts.endpoints  }}
+---
+apiVersion: openunison.tremolo.io/v1
+kind: Workflow
+metadata:
+  name: sts-update-{{ .name }}
+  namespace: {{ $root.Release.Namespace }}
+spec:
+  description: launch the cloudfront update job
+  inList: false
+  label: do nothing
+  orgId: x
+  tasks: |-
+    - taskType: addAttribute
+      name: sts_name
+      value: {{ .name }}
+      remove: false
+      addToRequest: true
+    - taskType: addAttribute
+      name: sts_s3_bucket
+      value: {{ .s3_bucket }}
+      remove: false
+      addToRequest: true
+    - taskType: addAttribute
+      name: sts_cf_distroid
+      value: {{ .cf_distroid }}
+      remove: false
+      addToRequest: true
+    - taskType: callWorkflow
+      name: launch-update-job
+{{ end }}

@@ -1,0 +1,51 @@
+---
+apiVersion: openunison.tremolo.io/v1
+kind: AuthenticationChain
+metadata:
+  name: github
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: openunison
+    app.kubernetes.io/instance: openunison-{{ .Release.Name }}
+    app.kubernetes.io/component: openunison-authchains
+    app.kubernetes.io/part-of: openunison
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
+spec:
+  level: 20
+  root: o=Tremolo
+  authMechs:
+  - name: github
+    required: required
+    params:
+      bearerTokenName: githubToken
+      clientid: {{ .Values.github.client_id }}
+      scope: "user:read user:email read:org"
+      linkToDirectory: "false"
+      noMatchOU: github
+      lookupFilter: "(uid=${login})"
+      uidAttr: login
+      defaultObjectClass: inetOrgPerson
+    secretParams:
+    - name: secretid
+      secretName: orchestra-secrets-source#[openunison.static-secret.suffix]
+      secretKey: GITHUB_SECRET_ID
+  - name: az
+    required: required
+    params:
+      rules: custom;github!{{ .Values.github.teams }}
+  - name: map
+    required: required
+    params:
+      map: 
+      - "uid|composite|${login}"
+      - "mail|composite|${mail}"
+      - "givenName|composite|${givenName}"
+      - "sn|composite|${sn}"
+      - "displayName|composite|${name}"
+      - "memberOf|user|teams"
+  - name: jit
+    required: required
+    params: 
+      nameAttr: uid
+      workflowName: jitdb

@@ -1,0 +1,87 @@
+---
+apiVersion: openunison.tremolo.io/v2
+kind: Application
+metadata:
+  labels:
+    app.kubernetes.io/component: openunison-applications
+    app.kubernetes.io/instance: openunison-orchestra-login-portal
+    app.kubernetes.io/name: openunison
+    app.kubernetes.io/part-of: openunison
+  name: app-idp
+  namespace: {{ .Release.Namespace }}
+spec:
+  azTimeoutMillis: 3000
+  cookieConfig:
+    cookiesEnabled: true
+    domain: '#[OU_HOST]'
+    httpOnly: true
+    keyAlias: session-unison
+    logoutURI: /logout
+    scope: -1
+    secure: true
+    sessionCookieName: tremolosession
+    timeout: 900
+  isApp: false
+  urls:
+  - azRules:
+    - constraint: o=Tremolo
+      scope: dn
+    filterChain: []
+    hosts:
+    - '#[OU_HOST]'
+    idp:
+      className: com.tremolosecurity.idp.providers.OpenIDConnectIdP
+      mappings:
+        map:
+        - sourceType: user
+          targetAttributeName: sub
+          targetAttributeSource: uid
+        - sourceType: user
+          targetAttributeName: uid
+          targetAttributeSource: uid
+        - sourceType: user
+          targetAttributeName: name
+          targetAttributeSource: displayName
+        strict: true
+      params:
+        jwtSigningKey: unison-saml2-rp-sig
+        k8sNameSpace: '{{ .Release.Namespace }}'
+        k8sTarget: k8s
+        sessionStoreClassName: com.tremolosecurity.oidc.k8s.K8sSessionStore
+        cors-headers:
+        - Access-Control-Allow-Origin=*
+        - Access-Control-Allow-Methods=GET, POST, OPTIONS
+        - Access-Control-Allow-Headers=Content-Type, Authorization, X-Requested-With, Cookie, Cookie2
+        - Access-Control-Allow-Credentials=false
+      trusts:
+      - name: 'https://#[OU_HOST]/'
+        params:
+          accessTokenSkewMillis: "120000"
+          accessTokenTimeToLive: '60000'
+          authChainName: app-login-service
+          clientID: logintest
+          codeLastMileKeyName: lastmile-oidc
+          codeTokenSkewMilis: '60000'
+          publicEndpoint: "true"
+          redirectURI: 
+          - https://#[OU_HOST]/auth/oidc
+        secretParams:
+        - name: clientSecret
+          secretName: orchestra-secrets-source
+          secretKey: LOGIN_TEST
+      - name: 'chatbot-frontend'
+        params:
+          accessTokenSkewMillis: "120000"
+          accessTokenTimeToLive: '60000'
+          authChainName: app-login-service
+          clientID: chatbot-frontend
+          codeLastMileKeyName: lastmile-oidc
+          codeTokenSkewMilis: '60000'
+          publicEndpoint: "true"
+          redirectURI: 
+          - https://chatbot.192-168-2-133.nip.io/
+        secretParams: []
+    results:
+      auFail: default-login-failure
+      azFail: default-login-failure
+    uri: /auth/idp/app-idp

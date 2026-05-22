@@ -1,0 +1,20 @@
+---
+apiVersion: openunison.tremolo.io/v1
+kind: AuthenticationChain
+metadata:
+  name: app-login-service
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
+spec:
+  level: 20
+  root: o=Tremolo
+  authMechs:
+  - name: login-service
+    required: required
+    params:
+      chains: "Login=/app/login/auth"
+      serviceUrl: "/auth/forms/chooseLogin.jsp"
+      cookieName: "tremoloLoginChoice"
+      cookieDays: "30"
+    secretParams: []

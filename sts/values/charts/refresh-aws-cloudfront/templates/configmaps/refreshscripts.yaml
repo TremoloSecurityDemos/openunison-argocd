@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: refreshscripts
+  namespace: {{ .Release.Namespace }}
+data:
+  script.sh: |-
+    #!/bin/bash
+
+    export S3DIR=$(mktemp -d)
+    mkdir $S3DIR/.well-known
+    curl --insecure "https://$OU_HOST/$STS/issuer-docs" | jq -r '.discovery' > $S3DIR/.well-known/openid-configuration
+    curl --insecure "https://$OU_HOST/$STS/issuer-docs" | jq -r '.keys' | jq -r > $S3DIR/certs
+
+    cd $S3DIR
+    aws s3 sync .  "s3://$STS_S3_BUCKET/" --exact-timestamps
+    aws cloudfront create-invalidation --distribution-id "$CLOUDFRONT_DISTRO_ID" --paths "/certs"

@@ -1,0 +1,56 @@
+---
+apiVersion: openunison.tremolo.io/v1
+kind: AuthenticationChain
+metadata:
+  name: app-idp
+  namespace: {{ .Release.Namespace }}
+spec:
+  authMechs:
+  - name: oidc
+    required: required
+    params:
+      # Name of the request object the bearer token should be stored in
+      bearerTokenName: "appidptoken"
+      # The client_id supplied by the OP
+      clientid: "logintest"
+
+      # What to request from the OP
+      responseType: "code"
+
+      # The identity provider's issuer
+      issuer: https://#[OU_HOST]/auth/idp/app-idp
+
+      # Only set these attributes if the issuer does not provide an oidc discovery document
+
+      # The authentication request url of the OP
+      #idpURL: "http://keycloak.tremolo.lan:8080/auth/realms/unison/protocol/openid-connect/auth"
+      # The URL to load the token from
+      #loadTokenURL: "http://keycloak.tremolo.lan:8080/auth/realms/unison/protocol/openid-connect/token"
+      # set to true if the identity provider supports PKCE
+      #usePKCE: "true"
+
+      # Claims to request from the OP
+      scope: "openid name offline"
+      # If true, the mechanism will attempt to find the user inside of OpenUnison's internal virtual directory
+      linkToDirectory: "false"
+      # If a user isn't matched in the virtual directory, ou to be assigned to
+      noMatchOU: "app-idp"
+      # How to lookup a user. Use ${claim_name} to include a claim from the user's id_token in the search
+      lookupFilter: "(uid=${sub})"
+      # If the user's object isn't matched in the virtual directory, the objectClass to assign
+      defaultObjectClass: "inetOrgPerson"
+      # The name of the attribute in the id_token that identifies the user
+      uidAttr: "sub"
+      # Optional - If you want to limit which user domains to authenticate by the OP, specify that domain here
+      hd: ""
+      # Implementation of com.tremolosecurity.unison.proxy.auth.openidconnect.sdk.LoadUserData
+      userLookupClassName: "com.tremolosecurity.unison.proxy.auth.openidconnect.loadUser.LoadJWTFromAccessToken"
+      jwtTokenAttributeName: "id_token"
+    secretParams:
+    - name: secretid
+      # the key in the secret's data section
+      secretKey: LOGIN_TEST
+      # the name of the secret
+      secretName: orchestra-secrets-source#[openunison.static-secret.suffix]
+  level: 20
+  root: o=Tremolo
