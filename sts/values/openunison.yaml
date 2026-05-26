@@ -16,7 +16,7 @@ cert_template:
   c: "MyCountry"
 
 
-image: harbor.qalab.tremolo.dev/lab/ou-k8s:1.0.50
+
 myvd_config_path: "WEB-INF/myvd.conf"
 k8s_cluster_name: sts
 enable_impersonation: false
@@ -107,6 +107,7 @@ services:
   - "alive"
   
 openunison:
+  force_update: "testing 1.0.50"
   keys:
   - name: sts-aws
     import_into_ks: keypair
@@ -290,7 +291,6 @@ sts:
     cf_distroid: E3JNFJ3VUSMPQR
 
 operator:
-  image: ghcr.io/mlbiam/openunison-kubernetes-operator:1.0.11-84b0c6
   # mutators:
   #  - injector-aws
   #  - injector-aws-cp
